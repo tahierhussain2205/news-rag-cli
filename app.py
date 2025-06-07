@@ -67,14 +67,15 @@ class ArticleQuery:
         """Initialize with a query string and NewsAPI key."""
         self.query = query
         self.api_key = api_key
-        self.store_dir = self._make_directory_name(query)
+        safe = re.sub(r"\W+", "_", query.lower())
+        self.collection_name = f"chroma_store_{safe}"
+        self.store_dir = os.path.join(BASE_STORE_DIR, self.collection_name)
         self.vectorstore = None
 
     def _make_directory_name(self, query: str) -> str:
         """Convert the search query into a safe subdirectory under BASE_STORE_DIR."""
         safe = re.sub(r"\W+", "_", query.lower())
-        path = os.path.join(BASE_STORE_DIR, f"chroma_store_{safe}")
-        return path
+        return os.path.join(BASE_STORE_DIR, f"chroma_store_{safe}")
 
     def fetch_articles(self) -> list[dict]:
         """Retrieve up to MAX_ARTICLES using NewsAPI's headlines and everything endpoints."""
@@ -122,7 +123,8 @@ class ArticleQuery:
         self.vectorstore = Chroma.from_documents(
             documents=chunks,
             embedding=embeddings,
-            persist_directory=self.store_dir
+            persist_directory=self.store_dir,
+            collection_name=self.collection_name
         )
 
     def load_vectorstore(self):
@@ -131,7 +133,8 @@ class ArticleQuery:
             embeddings = OpenAIEmbeddings(model=EMBEDDING_MODEL)
             self.vectorstore = Chroma(
                 embedding_function=embeddings,
-                persist_directory=self.store_dir
+                persist_directory=self.store_dir,
+                collection_name=self.collection_name
             )
 
     def delete_store(self):
